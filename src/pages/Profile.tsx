@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from '@/context/AuthContext';
+import { UserLoans } from '@/components/loans/UserLoans';
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
@@ -88,51 +89,17 @@ const Profile: React.FC = () => {
 
           <Card className="col-span-1 md:col-span-3">
             <CardHeader>
-              <CardTitle>Loan Summary</CardTitle>
-              <CardDescription>Overview of your active and past loans</CardDescription>
+              <CardTitle>My Loan Applications</CardTitle>
+              <CardDescription>Track your loan application status</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Loan ID</TableHead>
-                    <TableHead>Loan Type</TableHead>
-                    <TableHead>Principal</TableHead>
-                    <TableHead>EMI</TableHead>
-                    <TableHead>Tenure</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>LOAN001</TableCell>
-                    <TableCell>Personal Loan</TableCell>
-                    <TableCell>₹50,000</TableCell>
-                    <TableCell>₹4,500</TableCell>
-                    <TableCell>12 months</TableCell>
-                    <TableCell>01 Jan 2024</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                        Active
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>LOAN002</TableCell>
-                    <TableCell>Education Loan</TableCell>
-                    <TableCell>₹100,000</TableCell>
-                    <TableCell>₹4,600</TableCell>
-                    <TableCell>24 months</TableCell>
-                    <TableCell>15 Mar 2023</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
-                        Completed
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              {user ? (
+                <UserLoans userId={user.id} />
+              ) : (
+                <div className="flex items-center justify-center h-40">
+                  <p className="text-muted-foreground">Please login to view your loan applications</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
