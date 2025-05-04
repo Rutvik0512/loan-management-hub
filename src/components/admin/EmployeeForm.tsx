@@ -19,7 +19,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { User } from '@/types';
+import { User, BankDetails } from '@/types';
 
 interface EmployeeFormProps {
   employee?: User;
@@ -58,7 +58,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
     setFormData(prev => ({
       ...prev,
       bankDetails: {
-        ...(prev.bankDetails || {}),
+        ...prev.bankDetails as BankDetails,
         [name]: value
       }
     }));
