@@ -9,7 +9,226 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      bank_details: {
+        Row: {
+          account_number: string
+          bank_name: string
+          created_at: string | null
+          id: string
+          ifsc_code: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_number: string
+          bank_name: string
+          created_at?: string | null
+          id?: string
+          ifsc_code: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_number?: string
+          bank_name?: string
+          created_at?: string | null
+          id?: string
+          ifsc_code?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_applications: {
+        Row: {
+          applied_amount: number
+          applied_date: string | null
+          applied_tenure: number
+          approved_date: string | null
+          completion_date: string | null
+          created_at: string | null
+          emi: number
+          finance_comment: string | null
+          id: string
+          loan_id: string
+          manager_comment: string | null
+          rejected_date: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_amount: number
+          applied_date?: string | null
+          applied_tenure: number
+          approved_date?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          emi: number
+          finance_comment?: string | null
+          id?: string
+          loan_id: string
+          manager_comment?: string | null
+          rejected_date?: string | null
+          status: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_amount?: number
+          applied_date?: string | null
+          applied_tenure?: number
+          approved_date?: string | null
+          completion_date?: string | null
+          created_at?: string | null
+          emi?: number
+          finance_comment?: string | null
+          id?: string
+          loan_id?: string
+          manager_comment?: string | null
+          rejected_date?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_applications_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_repayments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          is_paid: boolean | null
+          loan_application_id: string
+          payment_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          is_paid?: boolean | null
+          loan_application_id: string
+          payment_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          is_paid?: boolean | null
+          loan_application_id?: string
+          payment_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_repayments_loan_application_id_fkey"
+            columns: ["loan_application_id"]
+            isOneToOne: false
+            referencedRelation: "loan_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          eligibility_criteria: string | null
+          id: string
+          interest_rate: number
+          is_active: boolean | null
+          max_amount: number
+          max_tenure_months: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          eligibility_criteria?: string | null
+          id?: string
+          interest_rate: number
+          is_active?: boolean | null
+          max_amount: number
+          max_tenure_months: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          eligibility_criteria?: string | null
+          id?: string
+          interest_rate?: number
+          is_active?: boolean | null
+          max_amount?: number
+          max_tenure_months?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          department: string
+          email: string
+          employee_id: string
+          id: string
+          name: string
+          role: string
+          salary: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department: string
+          email: string
+          employee_id: string
+          id?: string
+          name: string
+          role: string
+          salary?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string
+          email?: string
+          employee_id?: string
+          id?: string
+          name?: string
+          role?: string
+          salary?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
