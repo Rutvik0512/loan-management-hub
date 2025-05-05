@@ -26,27 +26,59 @@ export const LoanWorkflowStatus = ({ application }: { application: LoanApplicati
     queryKey: ['loanWorkflowHistory', application.id],
     queryFn: async () => {
       try {
-        // Use a custom RPC function that joins with users table to get names
+        // Since we don't have a registered RPC function, let's fetch directly from the table
         const { data: historyData, error } = await supabase
-          .rpc('get_loan_workflow_history', { application_id: application.id });
+          .from('loan_workflow_history')
+          .select(`
+            id,
+            status_from,
+            status_to,
+            comment,
+            changed_at,
+            changed_by,
+            loan_application_id
+          `)
+          .eq('loan_application_id', application.id)
+          .order('changed_at', { ascending: true });
         
         if (error) {
-          console.error('Error fetching workflow history via RPC:', error);
+          console.error('Error fetching workflow history:', error);
           
           // Fallback to the legacy approach: construct workflow history from the application data
           return generateFallbackWorkflowHistory(application);
         }
         
-        const workflowSteps: WorkflowStep[] = historyData?.map((item: any) => ({
+        // Also get user names
+        const userIds = historyData
+          ?.filter(item => item.changed_by)
+          .map(item => item.changed_by) || [];
+        
+        let userMap: Record<string, string> = {};
+        if (userIds.length > 0) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', userIds);
+            
+          userMap = (userData || []).reduce((acc, user) => {
+            if (user?.id) acc[user.id] = user.name;
+            return acc;
+          }, {} as Record<string, string>);
+        }
+        
+        // Map the history data to workflow steps
+        const workflowSteps: WorkflowStep[] = (historyData || []).map(item => ({
           id: item.id,
           statusFrom: item.status_from,
           statusTo: item.status_to,
-          comment: item.comment,
+          comment: item.comment || undefined,
           changedAt: item.changed_at,
-          changedByName: item.user_name
-        })) || [];
+          changedByName: item.changed_by ? userMap[item.changed_by] || 'Unknown User' : undefined
+        }));
         
-        return workflowSteps;
+        return workflowSteps.length > 0 
+          ? workflowSteps 
+          : generateFallbackWorkflowHistory(application);
       } catch (error) {
         console.error('Error fetching workflow history:', error);
         // Fallback to generating workflow history from application data
