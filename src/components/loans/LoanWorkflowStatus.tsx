@@ -1,20 +1,11 @@
 
 import React from 'react';
 import { CheckCircle2, XCircle, Clock, AlertCircle, User, CreditCard, BanknoteIcon } from 'lucide-react';
-import { LoanApplication } from '@/types';
+import { LoanApplication, WorkflowStep } from '@/types';
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-
-interface WorkflowHistoryItem {
-  id: string;
-  statusFrom: string | null;
-  statusTo: string;
-  comment: string | null;
-  changedAt: string;
-  changedByName?: string;
-}
 
 interface Step {
   name: string;
@@ -35,38 +26,100 @@ export const LoanWorkflowStatus = ({ application }: { application: LoanApplicati
     queryKey: ['loanWorkflowHistory', application.id],
     queryFn: async () => {
       try {
-        // Join with users table to get the user names
-        const { data, error } = await supabase
-          .from('loan_workflow_history')
-          .select(`
-            id,
-            status_from,
-            status_to,
-            comment,
-            changed_at,
-            changed_by,
-            users:changed_by (name)
-          `)
-          .eq('loan_application_id', application.id)
-          .order('changed_at', { ascending: true });
+        // Use a custom RPC function that joins with users table to get names
+        const { data: historyData, error } = await supabase
+          .rpc('get_loan_workflow_history', { application_id: application.id });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching workflow history via RPC:', error);
+          
+          // Fallback to the legacy approach: construct workflow history from the application data
+          return generateFallbackWorkflowHistory(application);
+        }
         
-        return data?.map(item => ({
+        const workflowSteps: WorkflowStep[] = historyData?.map((item: any) => ({
           id: item.id,
           statusFrom: item.status_from,
           statusTo: item.status_to,
           comment: item.comment,
           changedAt: item.changed_at,
-          changedByName: item.users?.name
+          changedByName: item.user_name
         })) || [];
+        
+        return workflowSteps;
       } catch (error) {
         console.error('Error fetching workflow history:', error);
-        return [];
+        // Fallback to generating workflow history from application data
+        return generateFallbackWorkflowHistory(application);
       }
     },
     enabled: !!application.id
   });
+
+  // Generate fallback workflow history from application data
+  const generateFallbackWorkflowHistory = (app: LoanApplication): WorkflowStep[] => {
+    const steps: WorkflowStep[] = [];
+    
+    // Application submission step
+    steps.push({
+      id: '1',
+      statusFrom: null,
+      statusTo: 'PENDING',
+      comment: 'Application submitted',
+      changedByName: app.userName,
+      changedAt: app.appliedDate
+    });
+    
+    // Manager approval/rejection step
+    if (['MANAGER_APPROVED', 'MANAGER_REJECTED', 'FINANCE_APPROVED', 'FINANCE_REJECTED', 'ACTIVE', 'COMPLETED'].includes(app.status)) {
+      steps.push({
+        id: '2',
+        statusFrom: 'PENDING',
+        statusTo: app.status.startsWith('MANAGER_') ? app.status : 'MANAGER_APPROVED',
+        comment: app.managerComment,
+        changedByName: 'Manager',
+        changedAt: app.approvedDate || app.rejectedDate || ''
+      });
+    }
+    
+    // Finance approval/rejection step
+    if (['FINANCE_APPROVED', 'FINANCE_REJECTED', 'ACTIVE', 'COMPLETED'].includes(app.status)) {
+      steps.push({
+        id: '3',
+        statusFrom: 'MANAGER_APPROVED',
+        statusTo: app.status.startsWith('FINANCE_') ? app.status : 'FINANCE_APPROVED',
+        comment: app.financeComment,
+        changedByName: 'Finance Officer',
+        changedAt: app.approvedDate || app.rejectedDate || ''
+      });
+    }
+    
+    // Loan disbursement step
+    if (['ACTIVE', 'COMPLETED'].includes(app.status)) {
+      steps.push({
+        id: '4',
+        statusFrom: 'FINANCE_APPROVED',
+        statusTo: 'ACTIVE',
+        comment: 'Loan disbursed',
+        changedByName: 'System',
+        changedAt: app.approvedDate || ''
+      });
+    }
+    
+    // Loan completion step
+    if (app.status === 'COMPLETED') {
+      steps.push({
+        id: '5',
+        statusFrom: 'ACTIVE',
+        statusTo: 'COMPLETED',
+        comment: 'Loan fully repaid',
+        changedByName: 'System',
+        changedAt: app.completionDate || ''
+      });
+    }
+    
+    return steps;
+  };
 
   // Determine the steps based on the application status and workflow history
   const generateSteps = (): Step[] => {
