@@ -4,14 +4,15 @@ import { User, Clock, CheckCircle2, CreditCard, BanknoteIcon, XCircle, AlertCirc
 import { Badge } from "@/components/ui/badge";
 import { Step } from './utils/workflow-helpers';
 
+// This component is used for the vertical timeline view
 interface WorkflowStepItemProps {
   step: Step;
   index: number;
 }
 
 export const WorkflowStepItem = ({ step, index }: WorkflowStepItemProps) => {
-  const getStepIcon = (status: string) => {
-    switch (status) {
+  const getStepIcon = () => {
+    switch (step.status) {
       case 'completed':
         return <CheckCircle2 className="h-6 w-6 text-green-500" />;
       case 'current':
@@ -26,17 +27,17 @@ export const WorkflowStepItem = ({ step, index }: WorkflowStepItemProps) => {
   const getStepIconByName = (name: string) => {
     switch (name) {
       case 'Application Submitted':
-        return <CreditCard className="h-5 w-5" />;
+        return <CreditCard className="h-5 w-5 text-white" />;
       case 'Manager Approval':
-        return <User className="h-5 w-5" />;
+        return <User className="h-5 w-5 text-white" />;
       case 'Finance Approval':
-        return <User className="h-5 w-5" />;
+        return <User className="h-5 w-5 text-white" />;
       case 'Loan Disbursed':
-        return <BanknoteIcon className="h-5 w-5" />;
+        return <BanknoteIcon className="h-5 w-5 text-white" />;
       case 'Loan Completed':
-        return <CheckCircle2 className="h-5 w-5" />;
+        return <CheckCircle2 className="h-5 w-5 text-white" />;
       default:
-        return <AlertCircle className="h-5 w-5" />;
+        return <AlertCircle className="h-5 w-5 text-white" />;
     }
   };
 

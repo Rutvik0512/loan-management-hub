@@ -1,20 +1,25 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoanApplicationsList } from "@/components/loans/LoansList";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { dbLoanApplicationToAppLoanApplication, dbLoanToAppLoan, dbUserToAppUser } from '@/integrations/supabase/helpers';
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from 'react-router-dom';
+import { dbLoanApplicationToAppLoanApplication, dbLoanToAppLoan } from '@/integrations/supabase/helpers';
+import { LoanApplicationsList } from "@/components/loans/LoansList";
+import { LoanApplication } from '@/types';
+import { LoanWorkflowStatus } from '@/components/loans/LoanWorkflowStatus';
 
 const MyLoans: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [selectedLoan, setSelectedLoan] = useState<LoanApplication | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: applications, isLoading, error } = useQuery({
     queryKey: ['userLoans', user?.id],
@@ -70,6 +75,11 @@ const MyLoans: React.FC = () => {
     enabled: !!user?.id
   });
 
+  const handleViewLoanDetails = (loan: LoanApplication) => {
+    setSelectedLoan(loan);
+    setIsDialogOpen(true);
+  };
+
   return (
     <div className="container mx-auto py-6 pl-64">
       <div className="flex flex-col gap-6">
@@ -116,7 +126,45 @@ const MyLoans: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <LoanApplicationsList applications={applications} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {applications.map((application) => (
+                    <Card key={application.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <CardTitle>{application.loanName}</CardTitle>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => handleViewLoanDetails(application)}
+                            className="text-sm"
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                        <CardDescription>Applied on {new Date(application.appliedDate).toLocaleDateString()}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Amount</p>
+                            <p className="font-medium">₹{application.appliedAmount.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Status</p>
+                            <p className="font-medium capitalize">{application.status.replace('_', ' ').toLowerCase()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Tenure</p>
+                            <p className="font-medium">{application.appliedTenure} months</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">EMI</p>
+                            <p className="font-medium">₹{application.emi.toLocaleString()}/month</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -133,6 +181,19 @@ const MyLoans: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* Loan Details Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loan Application Details</DialogTitle>
+            <DialogDescription>
+              {selectedLoan ? `${selectedLoan.loanName} - Applied on ${new Date(selectedLoan.appliedDate).toLocaleDateString()}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLoan && <LoanWorkflowStatus application={selectedLoan} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -91,7 +91,7 @@ export interface Step {
 export const generateVisualSteps = (application: LoanApplication, workflowHistory?: WorkflowStep[]): Step[] => {
   const steps: Step[] = [
     {
-      name: 'Application Submitted',
+      name: 'Submitted',
       status: 'completed',
       date: formatDate(application.appliedDate),
       user: application.userName
@@ -170,14 +170,14 @@ export const generateVisualSteps = (application: LoanApplication, workflowHistor
   if (application.status === 'COMPLETED') {
     const completedEvent = workflowHistory?.find(h => h.statusTo === 'COMPLETED');
     steps.push({
-      name: 'Loan Completed',
+      name: 'Completed',
       status: 'completed',
       date: formatDate(completedEvent?.changedAt || application.completionDate),
       user: completedEvent?.changedByName
     });
   } else {
     steps.push({
-      name: 'Loan Completed',
+      name: 'Completed',
       status: application.status === 'ACTIVE' ? 'current' : 'upcoming'
     });
   }
