@@ -3,7 +3,7 @@ import React from 'react';
 import { WorkflowStep } from '@/types';
 import { Badge } from "@/components/ui/badge";
 import { User, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate, getStatusBadgeProps } from './utils/workflow-helpers';
 
 interface WorkflowStepsListProps {
   steps: WorkflowStep[];
@@ -11,11 +11,6 @@ interface WorkflowStepsListProps {
 }
 
 export const WorkflowStepsList = ({ steps, isLoading }: WorkflowStepsListProps) => {
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    return format(new Date(dateString), 'MMM d, yyyy');
-  };
-
   if (isLoading) {
     return (
       <div className="text-center py-4">
@@ -42,13 +37,7 @@ export const WorkflowStepsList = ({ steps, isLoading }: WorkflowStepsListProps) 
               <p className="text-sm text-muted-foreground mt-1">{formatDate(step.changedAt)}</p>
             </div>
             
-            <Badge variant="outline" className={
-              step.statusTo.includes('REJECTED') ? "bg-red-50 text-red-600" :
-              step.statusTo === 'COMPLETED' ? "bg-gray-50 text-gray-600" :
-              step.statusTo === 'ACTIVE' ? "bg-green-50 text-green-600" :
-              step.statusTo.includes('APPROVED') ? "bg-blue-50 text-blue-600" :
-              "bg-yellow-50 text-yellow-600"
-            }>
+            <Badge {...getStatusBadgeProps(step.statusTo)}>
               {step.statusTo.replace('_', ' ')}
             </Badge>
           </div>
