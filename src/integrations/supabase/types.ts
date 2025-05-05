@@ -154,6 +154,57 @@ export type Database = {
           },
         ]
       }
+      loan_workflow_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          comment: string | null
+          created_at: string | null
+          id: string
+          loan_application_id: string
+          status_from: string | null
+          status_to: string
+          updated_at: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          loan_application_id: string
+          status_from?: string | null
+          status_to: string
+          updated_at?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          loan_application_id?: string
+          status_from?: string | null
+          status_to?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_workflow_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_workflow_history_loan_application_id_fkey"
+            columns: ["loan_application_id"]
+            isOneToOne: false
+            referencedRelation: "loan_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loans: {
         Row: {
           created_at: string | null
