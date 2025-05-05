@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { CheckCircle2, XCircle, Clock, AlertCircle, User, BanknoteIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, User, BanknoteIcon, CreditCard } from 'lucide-react';
 import { LoanApplication, WorkflowStep } from '@/types';
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from '@tanstack/react-query';
