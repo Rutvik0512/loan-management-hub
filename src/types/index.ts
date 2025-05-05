@@ -46,6 +46,17 @@ export interface LoanApplication {
   approvedDate?: string;
   rejectedDate?: string;
   completionDate?: string;
+  workflowSteps?: WorkflowStep[];
+}
+
+export interface WorkflowStep {
+  id: string;
+  statusFrom: string | null;
+  statusTo: string;
+  comment?: string;
+  changedBy?: string;
+  changedByName?: string;
+  changedAt: string;
 }
 
 export interface AuthState {

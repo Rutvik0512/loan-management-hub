@@ -1,102 +1,172 @@
 
 import React from 'react';
-import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, User, CreditCard, BanknoteIcon } from 'lucide-react';
 import { LoanApplication } from '@/types';
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+
+interface WorkflowHistoryItem {
+  id: string;
+  statusFrom: string | null;
+  statusTo: string;
+  comment: string | null;
+  changedAt: string;
+  changedByName?: string;
+}
 
 interface Step {
   name: string;
   status: 'completed' | 'current' | 'upcoming' | 'rejected';
   date?: string;
   comment?: string;
+  user?: string;
 }
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString();
+  return format(new Date(dateString), 'MMM d, yyyy');
 };
 
 export const LoanWorkflowStatus = ({ application }: { application: LoanApplication }) => {
-  // Determine the steps based on the application status
-  const steps: Step[] = [
-    {
-      name: 'Application Submitted',
-      status: 'completed',
-      date: formatDate(application.appliedDate),
+  // Fetch workflow history for this application
+  const { data: workflowHistory, isLoading } = useQuery({
+    queryKey: ['loanWorkflowHistory', application.id],
+    queryFn: async () => {
+      try {
+        // Join with users table to get the user names
+        const { data, error } = await supabase
+          .from('loan_workflow_history')
+          .select(`
+            id,
+            status_from,
+            status_to,
+            comment,
+            changed_at,
+            changed_by,
+            users:changed_by (name)
+          `)
+          .eq('loan_application_id', application.id)
+          .order('changed_at', { ascending: true });
+        
+        if (error) throw error;
+        
+        return data?.map(item => ({
+          id: item.id,
+          statusFrom: item.status_from,
+          statusTo: item.status_to,
+          comment: item.comment,
+          changedAt: item.changed_at,
+          changedByName: item.users?.name
+        })) || [];
+      } catch (error) {
+        console.error('Error fetching workflow history:', error);
+        return [];
+      }
+    },
+    enabled: !!application.id
+  });
+
+  // Determine the steps based on the application status and workflow history
+  const generateSteps = (): Step[] => {
+    const steps: Step[] = [
+      {
+        name: 'Application Submitted',
+        status: 'completed',
+        date: formatDate(application.appliedDate),
+        user: application.userName
+      }
+    ];
+
+    // Manager approval step
+    if (['MANAGER_APPROVED', 'FINANCE_APPROVED', 'FINANCE_REJECTED', 'ACTIVE', 'COMPLETED'].includes(application.status)) {
+      const managerEvent = workflowHistory?.find(h => h.statusTo === 'MANAGER_APPROVED');
+      steps.push({
+        name: 'Manager Approval',
+        status: 'completed',
+        date: formatDate(managerEvent?.changedAt || application.approvedDate),
+        comment: application.managerComment,
+        user: managerEvent?.changedByName
+      });
+    } else if (application.status === 'MANAGER_REJECTED') {
+      const managerEvent = workflowHistory?.find(h => h.statusTo === 'MANAGER_REJECTED');
+      steps.push({
+        name: 'Manager Approval',
+        status: 'rejected',
+        date: formatDate(managerEvent?.changedAt || application.rejectedDate),
+        comment: application.managerComment,
+        user: managerEvent?.changedByName
+      });
+    } else {
+      steps.push({
+        name: 'Manager Approval',
+        status: application.status === 'PENDING' ? 'current' : 'upcoming'
+      });
     }
-  ];
 
-  // Manager approval step
-  if (['MANAGER_APPROVED', 'FINANCE_APPROVED', 'FINANCE_REJECTED', 'ACTIVE', 'COMPLETED'].includes(application.status)) {
-    steps.push({
-      name: 'Manager Approval',
-      status: 'completed',
-      date: formatDate(application.approvedDate),
-      comment: application.managerComment
-    });
-  } else if (application.status === 'MANAGER_REJECTED') {
-    steps.push({
-      name: 'Manager Approval',
-      status: 'rejected',
-      date: formatDate(application.rejectedDate),
-      comment: application.managerComment
-    });
-  } else {
-    steps.push({
-      name: 'Manager Approval',
-      status: application.status === 'PENDING' ? 'current' : 'upcoming'
-    });
-  }
+    // Finance approval step
+    if (['FINANCE_APPROVED', 'ACTIVE', 'COMPLETED'].includes(application.status)) {
+      const financeEvent = workflowHistory?.find(h => h.statusTo === 'FINANCE_APPROVED');
+      steps.push({
+        name: 'Finance Approval',
+        status: 'completed',
+        date: formatDate(financeEvent?.changedAt || application.approvedDate),
+        comment: application.financeComment,
+        user: financeEvent?.changedByName
+      });
+    } else if (application.status === 'FINANCE_REJECTED') {
+      const financeEvent = workflowHistory?.find(h => h.statusTo === 'FINANCE_REJECTED');
+      steps.push({
+        name: 'Finance Approval',
+        status: 'rejected',
+        date: formatDate(financeEvent?.changedAt || application.rejectedDate),
+        comment: application.financeComment,
+        user: financeEvent?.changedByName
+      });
+    } else {
+      steps.push({
+        name: 'Finance Approval',
+        status: application.status === 'MANAGER_APPROVED' ? 'current' : 'upcoming'
+      });
+    }
 
-  // Finance approval step
-  if (['FINANCE_APPROVED', 'ACTIVE', 'COMPLETED'].includes(application.status)) {
-    steps.push({
-      name: 'Finance Approval',
-      status: 'completed',
-      date: formatDate(application.approvedDate),
-      comment: application.financeComment
-    });
-  } else if (application.status === 'FINANCE_REJECTED') {
-    steps.push({
-      name: 'Finance Approval',
-      status: 'rejected',
-      date: formatDate(application.rejectedDate),
-      comment: application.financeComment
-    });
-  } else {
-    steps.push({
-      name: 'Finance Approval',
-      status: application.status === 'MANAGER_APPROVED' ? 'current' : 'upcoming'
-    });
-  }
+    // Loan active step
+    if (['ACTIVE', 'COMPLETED'].includes(application.status)) {
+      const activeEvent = workflowHistory?.find(h => h.statusTo === 'ACTIVE');
+      steps.push({
+        name: 'Loan Disbursed',
+        status: 'completed',
+        date: formatDate(activeEvent?.changedAt || application.approvedDate),
+        user: activeEvent?.changedByName
+      });
+    } else {
+      steps.push({
+        name: 'Loan Disbursed',
+        status: application.status === 'FINANCE_APPROVED' ? 'current' : 'upcoming'
+      });
+    }
 
-  // Loan active step
-  if (['ACTIVE', 'COMPLETED'].includes(application.status)) {
-    steps.push({
-      name: 'Loan Active',
-      status: 'completed',
-      date: formatDate(application.approvedDate)
-    });
-  } else {
-    steps.push({
-      name: 'Loan Active',
-      status: application.status === 'FINANCE_APPROVED' ? 'current' : 'upcoming'
-    });
-  }
+    // Loan completed step
+    if (application.status === 'COMPLETED') {
+      const completedEvent = workflowHistory?.find(h => h.statusTo === 'COMPLETED');
+      steps.push({
+        name: 'Loan Completed',
+        status: 'completed',
+        date: formatDate(completedEvent?.changedAt || application.completionDate),
+        user: completedEvent?.changedByName
+      });
+    } else {
+      steps.push({
+        name: 'Loan Completed',
+        status: application.status === 'ACTIVE' ? 'current' : 'upcoming'
+      });
+    }
 
-  // Loan completed step
-  if (application.status === 'COMPLETED') {
-    steps.push({
-      name: 'Loan Completed',
-      status: 'completed',
-      date: formatDate(application.completionDate)
-    });
-  } else {
-    steps.push({
-      name: 'Loan Completed',
-      status: application.status === 'ACTIVE' ? 'current' : 'upcoming'
-    });
-  }
+    return steps;
+  };
+
+  const steps = generateSteps();
 
   const getStepIcon = (status: string) => {
     switch (status) {
@@ -132,37 +202,117 @@ export const LoanWorkflowStatus = ({ application }: { application: LoanApplicati
     }
   };
 
+  const getStepIconByName = (name: string) => {
+    switch (name) {
+      case 'Application Submitted':
+        return <CreditCard className="h-5 w-5" />;
+      case 'Manager Approval':
+        return <User className="h-5 w-5" />;
+      case 'Finance Approval':
+        return <User className="h-5 w-5" />;
+      case 'Loan Disbursed':
+        return <BanknoteIcon className="h-5 w-5" />;
+      case 'Loan Completed':
+        return <CheckCircle2 className="h-5 w-5" />;
+      default:
+        return <AlertCircle className="h-5 w-5" />;
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-lg">Loan Status</h3>
+        <h3 className="font-semibold text-lg">Loan Application Workflow</h3>
         {getStatusBadge(application.status)}
       </div>
       
-      <div className="relative">
-        {/* Progress line */}
-        <div className="absolute left-3.5 top-0 h-full w-0.5 bg-gray-200"></div>
-        
-        {/* Steps */}
-        <div className="space-y-8">
+      {/* Loan details summary */}
+      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
+        <div>
+          <p className="text-sm text-muted-foreground">Loan Type</p>
+          <p className="font-medium">{application.loanName}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Applied Amount</p>
+          <p className="font-medium">₹{application.appliedAmount.toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Tenure</p>
+          <p className="font-medium">{application.appliedTenure} months</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">EMI</p>
+          <p className="font-medium">₹{application.emi.toLocaleString()}</p>
+        </div>
+      </div>
+      
+      {isLoading ? (
+        <div className="text-center py-4">
+          <p className="text-muted-foreground">Loading workflow history...</p>
+        </div>
+      ) : (
+        <div className="relative">
+          {/* Ariba-style workflow visualization */}
+          <div className="absolute left-10 top-9 h-[calc(100%-40px)] w-1 bg-gray-200"></div>
+          
           {steps.map((step, index) => (
-            <div key={index} className="relative flex items-start">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full z-10 bg-white">
-                {getStepIcon(step.status)}
+            <div key={index} className="relative flex mb-8">
+              {/* Status circle */}
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full z-10 
+                ${step.status === 'completed' ? 'bg-green-100' : 
+                  step.status === 'current' ? 'bg-blue-100' :
+                  step.status === 'rejected' ? 'bg-red-100' : 'bg-gray-100'}`}>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full
+                  ${step.status === 'completed' ? 'bg-green-500' : 
+                    step.status === 'current' ? 'bg-blue-500' :
+                    step.status === 'rejected' ? 'bg-red-500' : 'bg-gray-200'}`}>
+                  {getStepIconByName(step.name)}
+                </div>
               </div>
-              <div className="ml-4 -mt-1">
-                <h4 className="font-medium">{step.name}</h4>
-                {step.date && (
-                  <p className="text-sm text-muted-foreground">{step.date}</p>
-                )}
-                {step.comment && (
-                  <p className="text-sm mt-1 italic">{step.comment}</p>
-                )}
+              
+              {/* Step details */}
+              <div className="ml-6 flex-1">
+                <div className="bg-white p-4 rounded-lg border shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-medium text-lg">{step.name}</h4>
+                    <div>
+                      {step.status === 'completed' && (
+                        <Badge variant="outline" className="bg-green-50 text-green-600">Completed</Badge>
+                      )}
+                      {step.status === 'current' && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600">In Progress</Badge>
+                      )}
+                      {step.status === 'rejected' && (
+                        <Badge variant="outline" className="bg-red-50 text-red-600">Rejected</Badge>
+                      )}
+                      {step.status === 'upcoming' && (
+                        <Badge variant="outline" className="bg-gray-50 text-gray-600">Pending</Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {step.date && (
+                    <p className="text-sm text-muted-foreground mt-1">{step.date}</p>
+                  )}
+                  
+                  {step.user && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm">{step.user}</p>
+                    </div>
+                  )}
+                  
+                  {step.comment && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded border-l-2 border-gray-300">
+                      <p className="text-sm italic">{step.comment}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 };

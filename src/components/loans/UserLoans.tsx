@@ -32,7 +32,7 @@ export const UserLoans = ({ userId }: UserLoansProps) => {
           .eq('user_id', userId);
 
         if (applicationError) throw applicationError;
-        if (!applicationData) return [];
+        if (!applicationData || applicationData.length === 0) return [];
 
         // Get all unique loan IDs from applications
         const loanIds = [...new Set(applicationData.map(app => app.loan_id))];
@@ -81,7 +81,8 @@ export const UserLoans = ({ userId }: UserLoansProps) => {
         });
         return [];
       }
-    }
+    },
+    enabled: !!userId
   });
 
   if (isLoading) {
@@ -197,7 +198,7 @@ export const UserLoans = ({ userId }: UserLoansProps) => {
       </div>
 
       <Dialog open={isWorkflowOpen} onOpenChange={setIsWorkflowOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Loan Application Workflow</DialogTitle>
             <DialogDescription>
