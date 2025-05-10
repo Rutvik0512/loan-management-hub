@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { Step } from './utils/workflow-helpers';
 import { CheckCircle2, Clock, XCircle, User, Calendar, MessageSquare, CreditCard, ArrowDown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,13 +10,19 @@ import {
   AccordionTrigger 
 } from "@/components/ui/accordion";
 
+export interface Step {
+  name: string;
+  status: 'completed' | 'current' | 'rejected' | 'upcoming';
+  date?: string;
+  user?: string;
+  comment?: string;
+}
+
 interface VisualWorkflowTimelineProps {
   steps: Step[];
 }
 
 export const VisualWorkflowTimeline = ({ steps }: VisualWorkflowTimelineProps) => {
-  const [expandedStep, setExpandedStep] = useState<string | null>(null);
-  
   // Helper function to get the appropriate status icon
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -118,7 +123,7 @@ export const VisualWorkflowTimeline = ({ steps }: VisualWorkflowTimelineProps) =
       )}
 
       {/* Details section using accordion for detailed information */}
-      <Accordion type="single" collapsible className="w-full space-y-4">
+      <Accordion type="multiple" defaultValue={steps.filter(s => s.status === 'current').map((_, index) => `item-${index}`)} className="w-full space-y-4">
         {steps.filter(s => s.status !== 'upcoming').map((step, index) => (
           <AccordionItem 
             key={`detail-${index}`} 

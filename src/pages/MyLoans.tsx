@@ -10,9 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { dbLoanApplicationToAppLoanApplication, dbLoanToAppLoan } from '@/integrations/supabase/helpers';
-import { LoanApplicationsList } from "@/components/loans/LoansList";
 import { LoanApplication } from '@/types';
-import { LoanWorkflowStatus } from '@/components/loans/LoanWorkflowStatus';
+import { VisualWorkflowTimeline } from "@/components/loans/VisualWorkflowTimeline";
 
 const MyLoans: React.FC = () => {
   const { user } = useAuth();
@@ -191,7 +190,55 @@ const MyLoans: React.FC = () => {
               {selectedLoan ? `${selectedLoan.loanName} - Applied on ${new Date(selectedLoan.appliedDate).toLocaleDateString()}` : ''}
             </DialogDescription>
           </DialogHeader>
-          {selectedLoan && <LoanWorkflowStatus application={selectedLoan} />}
+          {selectedLoan && (
+            // Use VisualWorkflowTimeline directly instead of LoanWorkflowStatus
+            <VisualWorkflowTimeline 
+              steps={[
+                {
+                  name: "Application Submitted",
+                  status: "completed",
+                  date: new Date(selectedLoan.appliedDate).toLocaleDateString(),
+                  user: selectedLoan.userName,
+                  comment: "Loan application submitted for review"
+                },
+                {
+                  name: "Manager Approval",
+                  status: selectedLoan.status === "PENDING" ? "current" : 
+                           selectedLoan.status === "MANAGER_REJECTED" ? "rejected" : "completed",
+                  date: selectedLoan.status !== "PENDING" ? new Date().toLocaleDateString() : undefined,
+                  user: "John Manager",
+                  comment: selectedLoan.managerComment || "Application is being reviewed by the manager"
+                },
+                {
+                  name: "Finance Approval",
+                  status: selectedLoan.status === "MANAGER_APPROVED" ? "current" : 
+                           selectedLoan.status === "FINANCE_REJECTED" ? "rejected" :
+                           selectedLoan.status === "FINANCE_APPROVED" || 
+                           selectedLoan.status === "ACTIVE" || 
+                           selectedLoan.status === "COMPLETED" ? "completed" : "upcoming",
+                  date: selectedLoan.status === "FINANCE_APPROVED" || 
+                        selectedLoan.status === "ACTIVE" || 
+                        selectedLoan.status === "COMPLETED" ? new Date().toLocaleDateString() : undefined,
+                  user: "Finance Department",
+                  comment: selectedLoan.financeComment || "Finance team review"
+                },
+                {
+                  name: "Loan Disbursed",
+                  status: selectedLoan.status === "FINANCE_APPROVED" ? "current" :
+                           selectedLoan.status === "ACTIVE" || 
+                           selectedLoan.status === "COMPLETED" ? "completed" : "upcoming",
+                  date: selectedLoan.status === "ACTIVE" || 
+                        selectedLoan.status === "COMPLETED" ? new Date().toLocaleDateString() : undefined
+                },
+                {
+                  name: "Completed",
+                  status: selectedLoan.status === "ACTIVE" ? "current" :
+                           selectedLoan.status === "COMPLETED" ? "completed" : "upcoming",
+                  date: selectedLoan.completionDate ? new Date(selectedLoan.completionDate).toLocaleDateString() : undefined
+                }
+              ]}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
